@@ -1,22 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  CHAIN,
-  TonConnectButton,
-  UserRejectsError,
-  useIsConnectionRestored,
-  useTonAddress,
-  useTonConnectUI,
-  useTonWallet,
-} from '@tonconnect/ui-react';
-import { net, PAYMENT_NANO, PAYMENT_AMOUNT, RECIPIENT, TICKER } from './config';
-import {
-  explorerAddressUrl,
-  explorerTxUrl,
-  normalizedMessageHash,
-  shortenAddress,
-  waitForTransaction,
-  type ConfirmedTx,
-} from './ton';
+import { CHAIN, useTonConnectUI } from '@tonconnect/ui-react';
+import { DEMO_MODE, net, PAYMENT_NANO, PAYMENT_AMOUNT, RECIPIENT, TICKER } from './config';
+import { explorerAddressUrl, explorerTxUrl, normalizedMessageHash, shortenAddress, type ConfirmedTx } from './ton';
+import { ConnectButton, DemoWalletSheet, HeaderWalletButton, useWallet } from './wallet';
 
 type Status =
   | { kind: 'idle' }
@@ -28,21 +14,20 @@ type Status =
 
 export function App() {
   const [tonConnectUI] = useTonConnectUI();
-  const restored = useIsConnectionRestored();
-  const wallet = useTonWallet();
-  const address = useTonAddress();
+  const wallet = useWallet();
+  const { ready: restored, address } = wallet;
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const abortRef = useRef<AbortController | null>(null);
 
   // Ask wallets to connect on our network. Throws if a session is already live, which is fine.
   useEffect(() => {
-    if (!restored || tonConnectUI.connected) return;
+    if (DEMO_MODE || !restored || tonConnectUI.connected) return;
     try {
       tonConnectUI.setConnectionNetwork(net.chain);
     } catch {
       /* already connected */
     }
-  }, [restored, tonConnectUI, wallet]);
+  }, [restored, tonConnectUI, address]);
 
   // Reset the flow whenever the wallet changes or disconnects.
   useEffect(() => {
@@ -50,13 +35,13 @@ export function App() {
     setStatus({ kind: 'idle' });
   }, [address]);
 
-  const wrongNetwork = !!wallet && wallet.account.chain !== net.chain;
+  const wrongNetwork = !!address && wallet.chain !== net.chain;
 
   async function pay() {
     if ('error' in RECIPIENT) return;
     setStatus({ kind: 'signing' });
     try {
-      const { boc } = await tonConnectUI.sendTransaction({
+      const { boc } = await wallet.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 5 * 60,
         network: net.chain,
         messages: [{ address: RECIPIENT.address, amount: PAYMENT_NANO }],
@@ -67,7 +52,7 @@ export function App() {
 
       const abort = (abortRef.current = new AbortController());
       try {
-        const tx = await waitForTransaction(msgHash, { signal: abort.signal });
+        const tx = await wallet.waitForTransaction(msgHash, { signal: abort.signal });
         setStatus(
           tx.success
             ? { kind: 'confirmed', tx }
@@ -79,7 +64,7 @@ export function App() {
     } catch (e) {
       setStatus({
         kind: 'error',
-        message: e instanceof UserRejectsError ? 'Request was declined in the wallet.' : errorMessage(e),
+        message: wallet.isRejection(e) ? 'Request was declined in the wallet.' : errorMessage(e),
       });
     }
   }
@@ -92,9 +77,10 @@ export function App() {
           <span>Percent Shop</span>
         </div>
         <div className="header-right">
+          {DEMO_MODE && <span className="pill pill-muted">Demo mode</span>}
           <span className="pill">{net.label}</span>
-          {/* Single official button: centered CTA while disconnected, wallet menu in the header once connected. */}
-          {wallet && <TonConnectButton />}
+          {/* Single button: centered CTA while disconnected, wallet menu in the header once connected. */}
+          {address && <HeaderWalletButton />}
         </div>
       </header>
 
@@ -130,15 +116,15 @@ export function App() {
                 <button className="btn" disabled>
                   Loading…
                 </button>
-              ) : !wallet ? (
-                <TonConnectButton className="connect-cta" />
+              ) : !address ? (
+                <ConnectButton />
               ) : wrongNetwork ? (
                 <>
                   <Notice tone="error">
-                    Your wallet is connected on {wallet.account.chain === CHAIN.MAINNET ? 'Mainnet' : 'another network'}.
+                    Your wallet is connected on {wallet.chain === CHAIN.MAINNET ? 'Mainnet' : 'another network'}.
                     Switch it to {net.label} and reconnect.
                   </Notice>
-                  <button className="btn btn-ghost" onClick={() => tonConnectUI.disconnect()}>
+                  <button className="btn btn-ghost" onClick={wallet.disconnect}>
                     Disconnect
                   </button>
                 </>
@@ -178,7 +164,10 @@ export function App() {
         </section>
       </main>
 
-      <footer className="footer">Powered by TON Connect</footer>
+      <footer className="footer">
+        {DEMO_MODE ? 'Demo mode · simulated wallet, no funds move' : 'Powered by TON Connect'}
+      </footer>
+      <DemoWalletSheet />
     </div>
   );
 }
@@ -207,9 +196,13 @@ function Success({ tx, onReset }: { tx: ConfirmedTx; onReset: () => void }) {
         </div>
       </dl>
 
-      <a className="btn" href={explorerTxUrl(tx.hash)} target="_blank" rel="noreferrer">
-        View on Tonviewer ↗
-      </a>
+      {DEMO_MODE ? (
+        <p className="muted small">Simulated transaction (demo mode), not broadcast to the network.</p>
+      ) : (
+        <a className="btn" href={explorerTxUrl(tx.hash)} target="_blank" rel="noreferrer">
+          View on Tonviewer ↗
+        </a>
+      )}
       <button className="btn btn-ghost" onClick={onReset}>
         Send another
       </button>

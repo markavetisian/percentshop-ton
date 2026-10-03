@@ -19,7 +19,20 @@ Edge cases handled:
 - The transaction lands but fails on-chain.
 - The indexer is slow (shows "sent, not indexed yet" with an explorer link).
 
-## Setup
+## Demo mode (no wallet app needed)
+
+Open the app with `?demo` (e.g. `http://localhost:5173/?demo`) or set `VITE_DEMO_MODE=true`. TON Connect is replaced by a simulated in-page wallet with connect and confirm sheets, so the whole flow runs without Tonkeeper, a faucet, or a hosted manifest. No `.env` is required.
+
+The rest of the app runs the same code as real mode: the transaction request it builds, the transaction hashing, every UI state, and the error handling. Only two things are faked: the wallet's signature and the on-chain lookup. The UI labels it "Demo mode" in the header, the footer, and the success screen.
+
+The swap happens in one place, `src/wallet.tsx`: `useWallet()` returns either the TON Connect wallet or the simulated one.
+
+### Share it with a client in 2 minutes
+1. Push the repo to GitHub → import it at [vercel.com/new](https://vercel.com/new). Vercel detects Vite; no settings needed.
+2. In the Vercel project, open Settings → Environment Variables, add `VITE_DEMO_MODE=true`, and redeploy.
+3. Send the `https://<project>.vercel.app` link.
+
+## Setup (real wallet)
 
 ```bash
 npm install

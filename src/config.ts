@@ -20,6 +20,13 @@ const NETWORKS = {
 } as const;
 
 export const net = NETWORKS[NETWORK];
+
+/**
+ * Demo mode swaps TON Connect for a simulated in-page wallet: no wallet app, no funds, nothing broadcast.
+ * On with VITE_DEMO_MODE=true or by adding ?demo to the URL.
+ */
+export const DEMO_MODE =
+  import.meta.env.VITE_DEMO_MODE === 'true' || new URLSearchParams(window.location.search).has('demo');
 export const IS_TESTNET = NETWORK === 'testnet';
 
 // Toncoin was renamed Gram (GRAM) on 2026-06-15; wallets now display GRAM. Change here to match.
@@ -38,7 +45,7 @@ export const TONCENTER_API_KEY: string | undefined = import.meta.env.VITE_TONCEN
  * bounceable transfer to it would bounce straight back to the sender.
  */
 export const RECIPIENT: { address: string } | { error: string } = (() => {
-  const raw = (import.meta.env.VITE_RECIPIENT_ADDRESS ?? '').trim();
+  const raw = (import.meta.env.VITE_RECIPIENT_ADDRESS ?? '').trim() || (DEMO_MODE ? `0:${'a7'.repeat(32)}` : '');
   if (!raw) return { error: 'VITE_RECIPIENT_ADDRESS is not set. Add it to .env and restart the dev server.' };
   try {
     return { address: Address.parse(raw).toString({ bounceable: false, testOnly: IS_TESTNET }) };
