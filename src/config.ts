@@ -1,8 +1,8 @@
 import { CHAIN } from '@tonconnect/ui-react';
 import { Address, toNano } from '@ton/core';
 
-// ─── Switch networks here. 'testnet' → 'mainnet' is the only change needed to go live. ───
-export const NETWORK: 'testnet' | 'mainnet' = 'testnet';
+// ─── Network: set VITE_NETWORK=mainnet to go live (or change the default here). ───
+export const NETWORK: 'testnet' | 'mainnet' = import.meta.env.VITE_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
 
 const NETWORKS = {
   testnet: {
@@ -30,7 +30,7 @@ export const DEMO_MODE =
 export const IS_TESTNET = NETWORK === 'testnet';
 
 // Toncoin was renamed Gram (GRAM) on 2026-06-15; wallets now display GRAM. Change here to match.
-export const TICKER = 'TON';
+export const TICKER = import.meta.env.VITE_TICKER || 'TON';
 export const PAYMENT_AMOUNT = '0.05';
 export const PAYMENT_NANO = toNano(PAYMENT_AMOUNT).toString(); // "50000000" nano
 

@@ -42,34 +42,21 @@ npm run dev
 
 | Variable | Required | Purpose |
 |---|---|---|
+| `VITE_NETWORK` | no | `testnet` (default) or `mainnet`. |
+| `VITE_TICKER` | no | Currency label, default `TON`. |
 | `VITE_RECIPIENT_ADDRESS` | yes | Wallet that receives the payment. Any format works; the app re-encodes it as non-bounceable for the active network. |
 | `VITE_TONCONNECT_MANIFEST_URL` | no | Overrides the manifest URL. Defaults to `<origin>/tonconnect-manifest.json`. |
 | `VITE_TONCENTER_API_KEY` | no | Raises the TON Center rate limit from 1 req/s. Get a key from [@tonapibot](https://t.me/tonapibot). |
 
 ## Testnet → mainnet
 
-There's one line to change in `src/config.ts`:
-
-```ts
-export const NETWORK: 'testnet' | 'mainnet' = 'testnet';
-```
+Set `VITE_NETWORK=mainnet` (or change the default in `src/config.ts`).
 
 The chain ID sent to wallets, the TON Center endpoint, the explorer links, address formatting, and the network badge all follow from it. When you switch, also set `VITE_RECIPIENT_ADDRESS` to a wallet you control on mainnet.
 
 ## The manifest must be publicly reachable
 
-The **wallet** downloads `tonconnect-manifest.json`, not your browser. A phone can't reach `localhost`, so connecting fails with a "manifest" error until the file is on public HTTPS. Two ways to fix that:
-
-- **Deploy first (recommended).** Push to Vercel or Netlify, then edit `public/tonconnect-manifest.json`:
-  ```json
-  {
-    "url": "https://your-app.vercel.app",
-    "name": "Percent Shop TON Demo",
-    "iconUrl": "https://your-app.vercel.app/icon.png"
-  }
-  ```
-  `url` must match where the app is served. `iconUrl` must be a PNG (180×180 is ideal); `public/icon.png` is a ready-made placeholder.
-- **Tunnel for local dev.** Run `npx cloudflared tunnel --url http://localhost:5173` (or ngrok), open the `https://…trycloudflare.com` URL, and put that URL in the manifest.
+The **wallet** downloads `/tonconnect-manifest.json`, not your browser, so it has to be on public HTTPS. The build generates it from `TONCONNECT_APP_URL` or, on Vercel, the project's production domain, so a Vercel deploy needs no manual step. For local testing on a phone, use a tunnel: `npx cloudflared tunnel --url http://localhost:5173`. The dev server serves a manifest matching whatever host you open it on.
 
 ## Get a testnet wallet and test TON
 
